@@ -1367,8 +1367,8 @@ Risk skoru 1 ise satıra class="risk-1", 2 ise class="risk-2", ..., 5 ise class=
                 showError('Boş Alan', 'Lütfen analiz edilecek bir metin girin ya da .txt dosyası yükleyin.');
                 return;
             }
-            if (!API_KEY) {
-                showError('API Anahtarı Eksik', 'Lütfen geçerli bir API anahtarı içeren slot seçin.');
+            if (!SELECTED_SLOT_ID) {
+                showError('Slot Seçimi Eksik', 'Lütfen devam etmek için ana ekrandan bir API slotu seçin.');
                 return;
             }
 
