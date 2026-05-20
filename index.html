@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verinin Bedeli — Dijital Gizlilik Analizörü</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&display=swap"
+        rel="stylesheet" />
+    <style>
+        /* ── CSS VARIABLES ──────────────────────────────────────── */
+        :root {
+            --bg-deep: #080d14;
+            --bg-base: #0f172a;
+            --bg-card: #111827;
+            --bg-card-hover: #162033;
+            --border: rgba(255, 255, 255, 0.07);
+            --border-bright: rgba(0, 255, 163, 0.25);
+
+            --accent: #00ffa3;
+            --accent-dim: rgba(0, 255, 163, 0.12);
+            --accent-glow: rgba(0, 255, 163, 0.35);
+            --cyber: #38bdf8;
+            --cyber-dim: rgba(56, 189, 248, 0.12);
+
+            --text-primary: #f0f4f8;
+            --text-secondary: #8898aa;
+            --text-muted: #4a5568;
+
+            --risk-1-bg: rgba(16, 185, 129, 0.10);
+            --risk-1-border: rgba(16, 185, 129, 0.30);
+            --risk-2-bg: rgba(52, 211, 153, 0.07);
+            --risk-2-border: rgba(52, 211, 153, 0.20);
+            --risk-3-bg: rgba(251, 191, 36, 0.08);
+            --risk-3-border: rgba(251, 191, 36, 0.22);
+            --risk-4-bg: rgba(249, 115, 22, 0.09);
+            --risk-4-border: rgba(249, 115, 22, 0.25);
+            --risk-5-bg: rgba(239, 68, 68, 0.11);
+            --risk-5-border: rgba(239, 68, 68, 0.30);
+
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 18px;
+
+            --font-mono: 'Space Mono', monospace;
+            --font-body: 'DM Sans', sans-serif;
+
+            --transition: 0.22s ease;
+        }
+
+        /* ── RESET & BASE ───────────────────────────────────────── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* noise grain overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.6;
+        }
+
+        /* ── SCANLINES ──────────────────────────────────────────── */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.03) 2px,
+                    rgba(0, 0, 0, 0.03) 4px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── AMBIENT GLOW ───────────────────────────────────────── */
+        .glow-orb {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(120px);
+            opacity: 0.07;
+        }
+
+        .glow-orb--tl {
+            top: -150px;
+            left: -150px;
+            background: radial-gradient(circle, var(--accent), transparent 70%);
+        }
+
+        .glow-orb--br {
+            bottom: -150px;
+            right: -150px;
+            background: radial-gradient(circle, var(--cyber), transparent 70%);
+        }
+
+        /* ── API SELECTOR OVERLAY ──────────────────────────────── */
+        #api-selector {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: var(--bg-deep);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            padding: 24px;
+            animation: fadeIn 0.4s ease both;
+        }
+
+        #api-selector.hidden {
+            display: none;
+        }
+
+        .selector-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid var(--border-bright);
+            border-radius: 100px;
+            padding: 4px 14px;
+            margin-bottom: 14px;
+        }
+
+        .selector-eyebrow::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--accent);
+            animation: pulse 2s infinite;
+        }
+
+        .selector-title {
+            font-family: var(--font-mono);
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+            text-align: center;
+        }
+
+        .selector-title span {
+            color: var(--accent);
+            text-shadow: 0 0 18px var(--accent-glow);
+        }
+
+        .selector-sub {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 300;
+            text-align: center;
+        }
+
+        .slots-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            max-width: 760px;
+            width: 100%;
+        }
+
+        @media (max-width: 680px) {
+            .slots-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .slot-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 22px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: border-color var(--transition), box-shadow var(--transition), transform 0.12s ease, background var(--transition);
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .slot-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0, 255, 163, 0.04) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity var(--transition);
+            pointer-events: none;
+        }
+
+        .slot-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow), inset 0 0 18px rgba(0, 255, 163, 0.04);
+            transform: translateY(-3px);
+            background: var(--bg-card-hover);
+        }
+
+        .slot-card:hover::before {
+            opacity: 1;
+        }
+
+        .slot-card:active {
+            transform: translateY(0);
+        }
+
+        .slot-card.disabled {
+            opacity: 0.28;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .slot-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 1px solid var(--border-bright);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .slot-label {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .slot-status {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            letter-spacing: 0.06em;
+        }
+
+        .slot-status.ready {
+            color: var(--accent);
+        }
+
+        .slot-status.missing {
+            color: var(--text-muted);
+        }
+
+        /* ── APP SHELL: full-screen two-column layout ───────────── */
+        .app-shell {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            grid-template-rows: 1fr;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ── LEFT PANEL ─────────────────────────────────────────── */
+        .panel-left {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            border-right: 1px solid var(--border);
+            background: var(--bg-card);
+            overflow: hidden;
+        }
+
+        /* top topbar */
+        .topbar {
+            flex-shrink: 0;
+            padding: 18px 24px 14px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(8, 13, 20, 0.6);
+            backdrop-filter: blur(8px);
+        }
+
+        .topbar-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid var(--border-bright);
+            border-radius: 100px;
+            padding: 4px 12px;
+            margin-bottom: 10px;
+        }
+
+        .topbar-eyebrow::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 5px var(--accent);
+            animation: pulse 2s infinite;
+        }
+
+        .topbar-title {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .topbar-title span {
+            color: var(--accent);
+            text-shadow: 0 0 18px var(--accent-glow);
+        }
+
+        .topbar-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 300;
+            line-height: 1.6;
+        }
+
+        /* scrollable body of left panel */
+        .panel-left-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* bottom sticky strip for button + footer */
+        .panel-left-foot {
+            flex-shrink: 0;
+            padding: 14px 20px 16px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-card);
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .footer-note p {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 0.06em;
+            line-height: 1.6;
+        }
+
+        /* ── RIGHT PANEL ────────────────────────────────────────── */
+        .panel-right {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--bg-deep);
+        }
+
+        .panel-right-header {
+            flex-shrink: 0;
+            padding: 18px 28px 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(8, 13, 20, 0.5);
+            backdrop-filter: blur(8px);
+        }
+
+        .panel-right-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 28px 32px;
+        }
+
+        /* empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 16px;
+            text-align: center;
+            opacity: 0.35;
+            user-select: none;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+        }
+
+        .empty-state-title {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            max-width: 260px;
+            line-height: 1.6;
+        }
+
+        /* ── CARD ───────────────────────────────────────────────── */
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0, 255, 163, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* ── INPUT SECTION ──────────────────────────────────────── */
+        .input-card {
+            animation: fadeUp 0.5s 0.1s ease both;
+        }
+
+        .card-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, var(--border-bright), transparent);
+        }
+
+        /* DROP ZONE */
+        .drop-zone {
+            border: 1.5px dashed var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            transition: border-color var(--transition), background var(--transition);
+            position: relative;
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .drop-zone.drag-over textarea {
+            opacity: 0.3;
+        }
+
+        .drop-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            border-radius: var(--radius-md);
+            background: var(--accent-dim);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .drop-zone.drag-over .drop-overlay {
+            display: flex;
+        }
+
+        .drop-overlay-icon {
+            font-size: 32px;
+        }
+
+        textarea#contract-input {
+            width: 100%;
+            min-height: 160px;
+            height: calc(100% - 60px);
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 13px;
+            line-height: 1.7;
+            resize: none;
+            padding: 8px 4px;
+        }
+
+        textarea#contract-input::placeholder {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .file-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .file-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            flex: 1;
+        }
+
+        .file-hint strong {
+            color: var(--text-secondary);
+        }
+
+        .btn-file {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+            color: var(--cyber);
+            background: var(--cyber-dim);
+            border: 1px solid rgba(56, 189, 248, 0.20);
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            cursor: pointer;
+            transition: background var(--transition), border-color var(--transition), color var(--transition);
+            white-space: nowrap;
+        }
+
+        .btn-file:hover {
+            background: rgba(56, 189, 248, 0.18);
+            border-color: var(--cyber);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .file-loaded-badge {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--accent);
+            background: var(--accent-dim);
+            border: 1px solid var(--border-bright);
+            border-radius: var(--radius-sm);
+            padding: 5px 10px;
+        }
+
+        .file-loaded-badge.visible {
+            display: inline-flex;
+        }
+
+        .file-loaded-badge .dot {
+            width: 5px;
+            height: 5px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 5px var(--accent);
+        }
+
+        /* ── ANALYZE BUTTON ─────────────────────────────────────── */
+        .btn-analyze {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, rgba(0, 255, 163, 0.14), rgba(0, 255, 163, 0.06));
+            border: 1px solid var(--border-bright);
+            border-radius: var(--radius-md);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background var(--transition), box-shadow var(--transition), transform 0.1s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-analyze::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 163, 0.08), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+        }
+
+        .btn-analyze:hover::before {
+            transform: translateX(100%);
+        }
+
+        .btn-analyze:hover {
+            background: linear-gradient(135deg, rgba(0, 255, 163, 0.22), rgba(0, 255, 163, 0.10));
+            box-shadow: 0 0 28px rgba(0, 255, 163, 0.20);
+        }
+
+        .btn-analyze:active {
+            transform: scale(0.98);
+        }
+
+        .btn-analyze:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* spinner */
+        .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 255, 163, 0.25);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .btn-analyze.loading .spinner {
+            display: block;
+        }
+
+        .btn-analyze.loading .btn-text {
+            opacity: 0.6;
+        }
+
+        /* ── ERROR ──────────────────────────────────────────────── */
+        .error-box {
+            display: none;
+            align-items: flex-start;
+            gap: 12px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: var(--radius-md);
+            padding: 16px 18px;
+            margin-top: 16px;
+            animation: fadeUp 0.3s ease;
+        }
+
+        .error-box.visible {
+            display: flex;
+        }
+
+        .error-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .error-text {
+            font-size: 13px;
+            color: #fca5a5;
+            line-height: 1.6;
+            font-family: var(--font-mono);
+        }
+
+        .error-text strong {
+            color: #f87171;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        /* ── RESULT PANEL ───────────────────────────────────────── */
+        .result-panel {
+            display: none;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .result-panel.visible {
+            display: block;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .result-title {
+            font-family: var(--font-mono);
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+        }
+
+        .result-title span {
+            color: var(--accent);
+            text-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        .result-divider {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, var(--border-bright), transparent);
+        }
+
+        /* TABLE */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        table.result-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 600px;
+        }
+
+        table.result-table thead tr {
+            background: rgba(0, 255, 163, 0.06);
+            border-bottom: 1px solid var(--border-bright);
+        }
+
+        table.result-table th {
+            padding: 13px 16px;
+            text-align: left;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        table.result-table td {
+            padding: 13px 16px;
+            vertical-align: top;
+            color: var(--text-secondary);
+            line-height: 1.55;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        table.result-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        table.result-table tbody tr {
+            transition: background var(--transition);
+        }
+
+        table.result-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* risk rows */
+        table.result-table tbody tr.risk-1 {
+            background: var(--risk-1-bg);
+            border-left: 2px solid var(--risk-1-border);
+        }
+
+        table.result-table tbody tr.risk-2 {
+            background: var(--risk-2-bg);
+            border-left: 2px solid var(--risk-2-border);
+        }
+
+        table.result-table tbody tr.risk-3 {
+            background: var(--risk-3-bg);
+            border-left: 2px solid var(--risk-3-border);
+        }
+
+        table.result-table tbody tr.risk-4 {
+            background: var(--risk-4-bg);
+            border-left: 2px solid var(--risk-4-border);
+        }
+
+        table.result-table tbody tr.risk-5 {
+            background: var(--risk-5-bg);
+            border-left: 2px solid var(--risk-5-border);
+        }
+
+        /* risk badge inside td */
+        .risk-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+        }
+
+        .risk-1 .risk-badge {
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .risk-2 .risk-badge {
+            color: #34d399;
+            background: rgba(52, 211, 153, 0.13);
+        }
+
+        .risk-3 .risk-badge {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.13);
+        }
+
+        .risk-4 .risk-badge {
+            color: #f97316;
+            background: rgba(249, 115, 22, 0.14);
+        }
+
+        .risk-5 .risk-badge {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        /* ── FOOTER ─────────────────────────────────────────────── */
+        .footer {
+            text-align: center;
+            margin-top: 72px;
+            padding-top: 28px;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer p {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 0.08em;
+        }
+
+        .footer p+p {
+            margin-top: 6px;
+        }
+
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+            opacity: 0.6;
+        }
+
+        .footer a:hover {
+            opacity: 1;
+        }
+
+        /* ── ANIMATIONS ─────────────────────────────────────────── */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* ── SCROLLBAR ──────────────────────────────────────────── */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* ── RESPONSIVE: stack panels on narrow screens ─────────── */
+        @media (max-width: 860px) {
+
+            html,
+            body {
+                overflow: auto;
+            }
+
+            .app-shell {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto;
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .panel-left {
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .panel-right {
+                height: auto;
+                min-height: 60vh;
+            }
+
+            .panel-left-body {
+                overflow-y: visible;
+            }
+
+            .panel-right-body {
+                overflow-y: visible;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Ambient glows -->
+    <div class="glow-orb glow-orb--tl"></div>
+    <div class="glow-orb glow-orb--br"></div>
+
+    <!-- ════════════════════════════════════════════════════════
+         API SELECTOR SCREEN
+    ═══════════════════════════════════════════════════════════ -->
+    <div id="api-selector">
+        <div>
+            <div class="selector-eyebrow">API Yapılandırması</div>
+            <div class="selector-title">Verinin Bedeli — <span>API Slot Seç</span></div>
+            <div class="selector-sub">Kullanmak istediğiniz API slotunu seçin. Her slot bağımsız bir Gemini API anahtarı
+                kullanır.</div>
+        </div>
+        <div class="slots-grid" id="slots-grid">
+            <!-- JS tarafından doldurulur -->
+        </div>
+    </div>
+
+    <div class="app-shell" id="app-shell" style="display:none;">
+
+        <!-- ════════════════════════════════════════════════════════
+         LEFT PANEL — Input
+    ═══════════════════════════════════════════════════════════ -->
+        <aside class="panel-left">
+
+            <!-- Topbar / Header -->
+            <div class="topbar">
+                <div class="topbar-eyebrow">Semantik Şeffaflık Projesi</div>
+                <h1 class="topbar-title">Verinin <span>Bedeli</span><br>Dijital Gizlilik Analizörü</h1>
+                <p class="topbar-sub">Kullanıcı sözleşmelerinin ve gizlilik politikalarının etik boyutunu yapay zeka
+                    destekli olarak analiz eden akademik bir
+                    araç. Her hizmetin sunduğu kolaylığın karşısında hangi veriyi, kime, ne karşılığında verdiğinizi
+                    keşfedin.
+                    <br><span
+                        style="color:var(--cyber);opacity:0.6;font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;">BİLİŞİM
+                        ETİĞİ · Ders Destek Aracı</span>
+                </p>
+            </div>
+
+            <!-- Scrollable body -->
+            <div class="panel-left-body">
+
+                <!-- Input Card -->
+                <div class="card input-card">
+                    <div class="card-label">Sözleşme Metni Girin</div>
+
+                    <div class="drop-zone" id="drop-zone">
+                        <div class="drop-overlay">
+                            <span class="drop-overlay-icon">📄</span>
+                            Dosyayı buraya bırakın
+                        </div>
+
+                        <textarea id="contract-input" placeholder="Analiz edilmesini istediğiniz gizlilik politikasını veya kullanıcı sözleşmesi metnini buraya yapıştırın...
+
+Örnek: " Hizmetimizi kullanarak konum verilerinizin, cihaz tanımlayıcılarınızın ve göz atma geçmişinizin reklam
+                            ortaklarımızla paylaşılmasını kabul etmiş olursunuz...""></textarea>
+
+                        <div class="file-bar">
+                            <span class="file-hint">
+                                <strong>Veya</strong> bir <code>.txt</code> dosyası sürükleyin ya da seçin
+                            </span>
+                            <span class="file-loaded-badge" id="file-badge">
+                                <span class="dot"></span>
+                                <span id="file-badge-name">dosya.txt</span>
+                            </span>
+                            <label class="btn-file" for="file-input">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg>
+                                Dosya Seç
+                            </label>
+                            <input type="file" id="file-input" accept=".txt" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Box -->
+                <div class="error-box" id="error-box">
+                    <span class="error-icon">⚠️</span>
+                    <div class="error-text">
+                        <strong id="error-title">Hata</strong>
+                        <span id="error-msg"></span>
+                    </div>
+                </div>
+
+            </div><!-- /panel-left-body -->
+
+            <!-- Sticky bottom foot: button + footer note -->
+            <div class="panel-left-foot">
+                <button class="btn-analyze" id="analyze-btn">
+                    <div class="spinner" id="spinner"></div>
+                    <span class="btn-text" id="btn-text">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" style="display:inline;vertical-align:middle;margin-right:6px;">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        Verinin Bedelini Hesapla
+                    </span>
+                </button>
+                <div class="footer-note">
+                    <p>Bu araç eğitim amaçlıdır. Sonuçlar yapay zeka tarafından üretilmektedir.</p>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- ════════════════════════════════════════════════════════
+         RIGHT PANEL — Results
+    ═══════════════════════════════════════════════════════════ -->
+        <main class="panel-right">
+
+            <!-- Right panel header bar -->
+            <div class="panel-right-header">
+                <h2 class="result-title" id="result-heading" style="opacity:0.3;">
+                    <span>Analiz</span> Sonucu
+                </h2>
+                <div class="result-divider"></div>
+                <span id="row-count-badge" style="display:none;" class="topbar-eyebrow" style="margin-bottom:0;">
+                    <span id="row-count">0</span> veri kategorisi
+                </span>
+            </div>
+
+            <!-- Scrollable results body -->
+            <div class="panel-right-body" id="panel-right-body">
+
+                <!-- Empty State -->
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <div class="empty-state-title">Henüz Analiz Yapılmadı</div>
+                    <div class="empty-state-sub">Sol panele bir sözleşme metni yapıştırın ve "Verinin Bedelini Hesapla"
+                        butonuna basın.</div>
+                </div>
+
+                <!-- Result Panel -->
+                <div class="result-panel" id="result-panel">
+                    <div class="table-wrap">
+                        <table class="result-table">
+                            <thead>
+                                <tr>
+                                    <th>Veri Kategorisi</th>
+                                    <th>Zorunlu mu? / Fonksiyon Bedeli</th>
+                                    <th>Paylaşılan Üçüncü Taraflar</th>
+                                    <th>Etik Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody id="result-tbody">
+                                <!-- AI rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div><!-- /panel-right-body -->
+        </main>
+
+    </div><!-- /app-shell -->
+
+    <!-- ════════════════════════════════════════════════════════
+       JAVASCRIPT
+  ═══════════════════════════════════════════════════════════ -->
+    <script>
+        // ─── API SLOT DEFINITIONS ──────────────────────────────────
+        // ARTIK GERÇEK ANAHTARLARI BURAYA YAZMIYORUZ!
+        // Sadece backend'e hangi slotun seçildiğini bildirmek için ID gönderiyoruz.
+        const API_SLOTS = [
+            { id: "slot1", label: "Slot 1", model: "gemini-3-flash-preview" },
+            { id: "slot2", label: "Slot 2", model: "gemini-3-flash-preview" },
+            { id: "slot3", label: "Slot 3", model: "gemini-3-flash-preview" },
+            { id: "slot4", label: "Slot 4", model: "gemini-3-flash-preview" },
+            { id: "slot5", label: "Slot 5", model: "gemini-3-flash-preview" },
+            { id: "slot6", label: "Slot 6", model: "gemini-3-flash-preview" },
+            { id: "slot7", label: "Slot 7", model: "gemini-3-flash-preview" },
+            { id: "slot8", label: "Slot 8", model: "gemini-3-flash-preview" },
+            { id: "slot9", label: "Slot 9", model: "gemini-3-flash-preview" },
+            { id: "slot10", label: "Slot 10", model: "gemini-3-flash-preview" },
+        ];
+
+        // Aktif seçimlerimizi tutacak değişkenler
+        let SELECTED_SLOT_ID = "";
+        const API_ENDPOINT = "/api/analyze"; // İstek atacağımız kendi güvenli backend'imiz
+
+        // ─── SELECTOR SCREEN ───────────────────────────────────────
+        (function buildSelector() {
+            const grid = document.getElementById('slots-grid');
+            API_SLOTS.forEach((slot, i) => {
+                // Vercel'e yüklenince hepsi aktif olacağı için hazır kabul ediyoruz
+                const card = document.createElement('div');
+                card.className = 'slot-card';
+                card.innerHTML = `
+                    <div class="slot-icon">${i + 1}</div>
+                    <div class="slot-label">${slot.label}</div>
+                    <div class="slot-status ready">● Aktif</div>
+                `;
+                card.addEventListener('click', () => selectSlot(slot));
+                grid.appendChild(card);
+            });
+        })();
+
+        function selectSlot(slot) {
+            SELECTED_SLOT_ID = slot.id; // Seçilen slotun ID'sini kaydet
+            document.getElementById('api-selector').classList.add('hidden');
+            const shell = document.getElementById('app-shell');
+            shell.style.display = '';
+            shell.style.animation = 'fadeIn 0.4s ease both';
+        }
+
+        const SYSTEM_PROMPT = `Sen bir siber güvenlik ve dijital gizlilik uzmanısın. Sana gönderilen kullanıcı sözleşmesini analiz et ve sadece aşağıdaki sütunlara sahip bir HTML tablosu (<table>) içeriği üret. Markdown kod blokları (\`\`\`html gibi) veya ekstra açıklama yazma, doğrudan <tr> ve <td> etiketlerini döndür.
+
+Sütunlar:
+1. Toplanan Veri Kategorisi (Örn: Hassas Konum, Cihaz Kimliği)
+2. Zorunlu mu? / Fonksiyon Bedeli (Bu veri verilmezse hangi özellik kullanılamaz?)
+3. Paylaşılan Üçüncü Taraflar (Reklam ağları, veri simsarları vb.)
+4. Etik Risk Skoru (1-5 arası bir puan ve çok kısa gerekçesi)
+
+Her satırın dördüncü <td> hücresine (Etik Risk Skoru) risk seviyesini SADECE sayı olarak belirt ve yanına çok kısa bir gerekçe ekle. Örnek: "4 — Reklam amaçlı hassas konum paylaşımı."
+Risk skoru 1 ise satıra class="risk-1", 2 ise class="risk-2", ..., 5 ise class="risk-5" ekle.`;
+
+        // ─── DOM REFS ───────────────────────────────────────────────
+        const textarea = document.getElementById('contract-input');
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const fileBadge = document.getElementById('file-badge');
+        const fileBadgeName = document.getElementById('file-badge-name');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const btnText = document.getElementById('btn-text');
+        const spinner = document.getElementById('spinner');
+        const errorBox = document.getElementById('error-box');
+        const errorTitle = document.getElementById('error-title');
+        const errorMsg = document.getElementById('error-msg');
+        const resultPanel = document.getElementById('result-panel');
+        const resultTbody = document.getElementById('result-tbody');
+
+        // ─── FILE READING ───────────────────────────────────────────
+        function readTxtFile(file) {
+            if (!file || !file.name.endsWith('.txt')) {
+                showError('Geçersiz Dosya', 'Lütfen yalnızca .txt uzantılı bir metin dosyası seçin.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                textarea.value = e.target.result;
+                fileBadgeName.textContent = file.name;
+                fileBadge.classList.add('visible');
+                hideError();
+            };
+            reader.onerror = () => showError('Dosya Okuma Hatası', 'Dosya okunurken bir sorun oluştu.');
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) readTxtFile(e.target.files[0]);
+        });
+
+        // Drag & Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) readTxtFile(file);
+        });
+
+        // ─── UI HELPERS ─────────────────────────────────────────────
+        function showError(title, msg) {
+            errorTitle.textContent = title;
+            errorMsg.textContent = msg;
+            errorBox.classList.add('visible');
+        }
+        function hideError() {
+            errorBox.classList.remove('visible');
+        }
+        function setLoading(on) {
+            analyzeBtn.disabled = on;
+            analyzeBtn.classList.toggle('loading', on);
+            if (on) {
+                btnText.innerHTML = 'Analiz Ediliyor...';
+                spinner.style.display = 'block';
+            } else {
+                spinner.style.display = 'none';
+                btnText.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+               style="display:inline;vertical-align:middle;margin-right:6px;">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>Verinin Bedelini Hesapla`;
+            }
+        }
+
+        // ─── POST-PROCESS: inject risk badges & row colors ──────────
+        function postProcessRows() {
+            const rows = resultTbody.querySelectorAll('tr');
+            rows.forEach(row => {
+                // detect risk class from the tr itself
+                let riskLevel = null;
+                for (let i = 1; i <= 5; i++) {
+                    if (row.classList.contains(`risk-${i}`)) { riskLevel = i; break; }
+                }
+                // fallback: parse 4th td for a leading digit
+                if (!riskLevel) {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 4) {
+                        const txt = cells[3].textContent.trim();
+                        const match = txt.match(/^([1-5])/);
+                        if (match) {
+                            riskLevel = parseInt(match[1]);
+                            row.classList.add(`risk-${riskLevel}`);
+                        }
+                    }
+                }
+                // inject badge into 4th cell
+                if (riskLevel) {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 4) {
+                        const td = cells[3];
+                        const original = td.innerHTML.trim();
+                        // strip leading digit and dash if present
+                        const cleaned = original.replace(/^[1-5]\s*[—–-]\s*/, '');
+                        const stars = '●'.repeat(riskLevel) + '○'.repeat(5 - riskLevel);
+                        td.innerHTML = `<div class="risk-badge">Skor ${riskLevel}/5 &nbsp;${stars}</div><div style="font-size:12px;color:var(--text-muted);margin-top:3px;">${cleaned}</div>`;
+                    }
+                }
+            });
+        }
+
+        // ─── ANALYZE ────────────────────────────────────────────────
+        analyzeBtn.addEventListener('click', async () => {
+            const text = textarea.value.trim();
+            hideError();
+            resultPanel.classList.remove('visible');
+            document.getElementById('empty-state').style.display = 'flex';
+            document.getElementById('result-heading').style.opacity = '0.3';
+            document.getElementById('row-count-badge').style.display = 'none';
+
+            // Validation
+            if (!text) {
+                showError('Boş Alan', 'Lütfen analiz edilecek bir metin girin ya da .txt dosyası yükleyin.');
+                return;
+            }
+            if (!API_KEY) {
+                showError('API Anahtarı Eksik', 'Lütfen geçerli bir API anahtarı içeren slot seçin.');
+                return;
+            }
+
+            setLoading(true);
+
+            // Backend'e göndereceğimiz paket
+            const requestPayload = {
+                text: text,
+                systemPrompt: SYSTEM_PROMPT,
+                slotId: SELECTED_SLOT_ID // Kullanıcının seçtiği slot (Örn: "slot3")
+            };
+
+            try {
+                // Doğrudan Google yerine Vercel Serverless fonksiyonumuza gidiyoruz
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestPayload),
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    const detail = errData?.error || `HTTP ${response.status}`;
+                    throw new Error(detail);
+                }
+
+                const data = await response.json();
+                const rawContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+                if (!rawContent.trim()) {
+                    throw new Error('Model boş bir yanıt döndürdü. Lütfen metin içeriğini kontrol edin.');
+                }
+
+                // Strip any markdown fences the model might still include
+                let cleaned = rawContent
+                    .replace(/```html?/gi, '')
+                    .replace(/```/g, '')
+                    .replace(/<table[^>]*>|<\/table>/gi, '')
+                    .replace(/<thead[^>]*>[\s\S]*?<\/thead>/gi, '')
+                    .replace(/<tbody[^>]*>|<\/tbody>/gi, '')
+                    .trim();
+
+                resultTbody.innerHTML = cleaned;
+                postProcessRows();
+
+                // show result, hide empty state, update badge
+                const rowCount = resultTbody.querySelectorAll('tr').length;
+                document.getElementById('empty-state').style.display = 'none';
+                document.getElementById('result-heading').style.opacity = '1';
+                document.getElementById('row-count-badge').style.display = 'inline-flex';
+                document.getElementById('row-count').textContent = rowCount;
+                resultPanel.classList.add('visible');
+
+            } catch (err) {
+                showError('Analiz Başarısız', err.message || 'Bilinmeyen bir hata oluştu.');
+            } finally {
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+
+</html>
